@@ -1,4 +1,7 @@
 {
     "B&M": "https://app.lg.int.momox.biz/storage/live_stock/"
+   
+}
+{
     "B&M_JS": "document.addEventListener('selectstart', event => event.preventDefault());"
 }
