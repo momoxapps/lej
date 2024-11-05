@@ -1,4 +1,5 @@
 {
-    "url": "https://app.lg.int.momox.biz/storage/live_stock/",
+    "url": "www.google.de",
+    "url1": "https://app.lg.int.momox.biz/storage/live_stock/",
     "js": "document.addEventListener('selectstart', event => event.preventDefault());"
 }
