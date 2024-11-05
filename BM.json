@@ -1,0 +1,4 @@
+{
+    "url": "https://app.lg.int.momox.biz/storage/live_stock/",
+    "js": "document.addEventListener('selectstart', event => event.preventDefault());"
+}
