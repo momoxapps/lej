@@ -1,4 +1,6 @@
 {
+    "Version": "1.2",
+    
     "Atoss_URL": "https://momox.moretime.de/atc/client",
     "Atoss_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
     
