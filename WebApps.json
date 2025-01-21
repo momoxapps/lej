@@ -20,7 +20,7 @@
     "B&M_Pick_JS": "(function(){'use strict';const style=document.createElement('style');style.innerHTML=`.ScanningInput_scanWrapper__3R8gL{flex-direction:row;flex-wrap:wrap;align-items:flex-end;}.ScanningInput_image__3vrvm{margin:0 5px 10px 0;font-size:28px;max-height:1em;}`;document.head.appendChild(style);document.addEventListener('selectstart',event=>event.preventDefault());window.addEventListener('load',function(){var radioButton=document.getElementById('business-unit-bm-button');if(radioButton){radioButton.click();}});})();",
     "B&M_Pick_TC20_JS": "(function(){'use strict';document.addEventListener('selectstart',event=>event.preventDefault());window.addEventListener('load',function(){var radioButton=document.getElementById('business-unit-bm-button');if(radioButton){radioButton.click();}});})();",
 
-    "SignLanguage_URL": "https://google.de",
+    "SignLanguage_URL": "https://signdict.org/entry/293-hallo",
     "SignLanguage_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
     
     "Version_TC20": "1.3",
