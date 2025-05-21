@@ -24,7 +24,14 @@
     "SignLanguage_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
     
     "Version_TC20": "1.3",
+    "Update_TC20": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
     "Version_TC21": "1.3",
+    "Update_TC21": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
     "Version_TC22": "1.3",
-    "Version_ET40": "1.3"
+    "Update_TC22": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
+    "Version_ET40": "1.3",
+    "Update_ET40": "deploy://applyProfile?name=MDE/Notification_Bar.xml"
 }
