@@ -1,0 +1,41 @@
+{
+	
+    "B&M_URL": "https://app.lg.int.momox.biz/login/?next=/storage/live_stock/",
+    "B&M_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
+	  "B&M_JS_enabled": true,
+    
+    "B&M_Inventur_URL": "https://app.lg.int.momox.biz/login/?next=/stock/inventory/",
+    "B&M_Inventur_JS_path": "JS/B&M_Inventur.js",
+    "B&M_Inventur_JS_enabled": false,
+	
+	
+    "B&M_SKU_URL": "https://app.lg.int.momox.biz/login/?next=/info/sku/",
+	  "B&M_SKU_JS_path": "JS/B&M_SKU_INFO.js",
+	  "B&M_SKU_JS_enabled": true,
+
+
+    "Fashion_URL": "https://storage-service-webapp.live.fs.local/login/",
+  	"Fashion_JS_path": "JS/fashion.js",
+  	"Fashion_JS_enabled": true,
+
+	  "Atoss_URL": "https://momox.moretime.de/atc/client",
+    "Atoss_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
+	  "Atoss_JS_enabled": true,
+
+    "SignLanguage_URL": "https://signdict.org/entry/293-hallo",
+    "SignLanguage_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
+	  "SignLanguage_JS_enabled": true,
+    
+    "Version_TC20": "1.3",
+    "Update_TC20": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
+    "Version_TC21": "1.3",
+    "Update_TC21": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
+    "Version_TC22": "1.3",
+    "Update_TC22": "deploy://applyProfile?name=MDE/Notification_Bar.xml",
+    
+    "Version_ET40": "1.3",
+    "Update_ET40":  "deploy://applyProfile?name=MDE/Wlan(MXLEJOFF).xml"
+  
+}
