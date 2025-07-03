@@ -4,7 +4,7 @@
     
     "B&M_URL": "https://app.lg.int.momox.biz/storage/live_stock/",
     "B&M_JS": "document.addEventListener('selectstart', event => event.preventDefault());",
-    "B&M_JS_enabled": false,
+    "B&M_JS_enabled": true,
     "B&M_JS_Logs": false,
     
     "B&M_Inventur_URL": "https://app.lg.int.momox.biz/stock/inventory/",
