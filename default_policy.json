@@ -1,0 +1,67 @@
+{
+  "BookmarkBarEnabled": true,
+  "EditBookmarksEnabled": false,
+  "AllowDeletingBrowserHistory": false,
+  "AutoFillEnabled": false,
+  "BackgroundModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "BrowserGuestModeEnabled": false,
+  "SigninAllowed": false,
+  "BrowserSignin": 0,
+  "DefaultBrowserSettingEnabled": false,
+  "DefaultCookiesSetting": 1,
+  "DefaultSearchProviderEnabled": false,
+  "DeveloperToolsAvailability": 2,
+  "EnableMediaRouter": false,
+  "ForceBrowserSignin": false,
+  "FullscreenAllowed": false,
+  "HideWebStoreIcon": true,
+  "ImportBookmarks": false,
+  "ImportHistory": false,
+  "ImportSavedPasswords": false,
+  "ImportSearchEngine": false,
+  "IncognitoModeAvailability": 1,
+  "LensRegionSearchEnabled": false,
+
+  "MediaRouterCastAllowAllIPs": false,
+  "MetricsReportingEnabled": false,
+  "PasswordManagerEnabled": false,
+
+  "PrintingEnabled": true,
+  "DefaultPrinterSelection": "{ \"namePattern\": \"MX00001\" }",
+  "PrintPreviewUseSystemDefaultPrinter": true,
+  "OopPrintDriversAllowed": false,
+  "DisablePrintPreview": false,
+  "PrintHeaderFooter": false,
+
+  "SafeBrowsingProtectionLevel": 1,
+  "SavingBrowserHistoryDisabled": true,
+  "SearchSuggestEnabled": false,
+  "ShowAppsShortcutInBookmarkBar": false,
+  "ShowHomeButton": false,
+  "SpellCheckServiceEnabled": false,
+  "SyncDisabled": true,
+  "TranslateEnabled": false,
+  "SpellcheckEnabled": false,
+
+  "DesktopSharingHubEnabled": false,
+
+  "CommandLineFlagSecurityWarningsEnabled": false,
+
+  "PromptForDownloadLocation": false,
+  "DownloadRestrictions": 3,
+
+  "DefaultPopupsSetting": 1,
+
+  "ExtensionInstallBlocklist": ["*"],
+  "URLBlocklist": ["chrome://settings/autofill", "chrome://settings/manageProfile", "chrome://settings/googleServices", "chrome://profile-picker"],
+
+  "ManagedBookmarks": [ {"toplevel_name": "Momox Pack"},
+  {"name": "Fashion Pack","url": "https://storage-service-webapp.live.fs.local/L-"},
+  {"name": "B&M Pack","url": "https://app.lg.int.momox.biz/shipping_outbound/pack_nll/"}, ],
+
+  "RestoreOnStartup": 4,
+  "RestoreOnStartupURLs": [
+    "https://app.lg.int.momox.biz/shipping_outbound/pack_nll/"
+  ],
+}
