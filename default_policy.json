@@ -58,10 +58,10 @@
 
   "ManagedBookmarks": [ {"toplevel_name": "Momox Pack"},
   {"name": "Fashion Pack","url": "https://storage-service-webapp.live.fs.local/L-"},
-  {"name": "B&M Pack","url": "https://app.lg.int.momox.biz/shipping_outbound/pack_nll/"}, ],
+  {"name": "B&M Pack","url": "https://app.lg.int.momox.biz/shipping_outbound/pack_nll/"} ],
 
   "RestoreOnStartup": 4,
   "RestoreOnStartupURLs": [
     "https://app.lg.int.momox.biz/shipping_outbound/pack_nll/"
-  ],
+  ]
 }
