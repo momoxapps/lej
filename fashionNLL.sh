@@ -143,8 +143,24 @@ fi
 ############################
 echo "[INFO] Configuring printer MX00001..."
 
+read -rp "Enter printer IP address (e.g. 10.24.1.113): " PRINTER_IP
+
+# validation
+if [[ -z "${PRINTER_IP}" ]]; then
+    echo "[ERROR] Printer IP cannot be empty"
+    exit 1
+fi
+
+# optional: basic format check
+if ! [[ "$PRINTER_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    echo "[ERROR] Invalid IP format"
+    exit 1
+fi
+
+echo "[INFO] Using printer IP: $PRINTER_IP"
+
 sudo lpadmin -p MX00001 -E \
-    -v socket://10.24.1.113:9100 \
+    -v "socket://${PRINTER_IP}:9100" \
     -m drv:///sample.drv/zebraep2.ppd \
     -o PageSize=w288h432 \
     -o media=w288h432 \
