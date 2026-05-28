@@ -70,53 +70,79 @@ service_exists() {
     systemctl list-unit-files | grep -q "^$1"
 }
 
+
 ############################################
-# X. UPDATE GOOGLE CHROME (OPTIONAL)
+# X. GOOGLE CHROME STABLE UPDATE (CONTROLLED)
 ############################################
 
 echo
-echo "[STEP X] Google Chrome update check..."
+echo "[STEP X] Google Chrome Stable update check..."
 
-read -rp "Do you want to update Google Chrome? (y/n): " UPDATE_CHROME
+# current version
+CURRENT_VERSION=$(google-chrome --version 2>/dev/null | awk '{print $3}' || echo "unknown")
+echo "[INFO] Current version: $CURRENT_VERSION"
 
-if [[ "$UPDATE_CHROME" =~ ^[Yy]$ ]]; then
+# get latest stable version from apt policy (reliable)
+echo "[INFO] Fetching latest STABLE version from system repo..."
 
-    echo "[INFO] Checking available Chrome versions..."
+LATEST_VERSION=$(apt-cache policy google-chrome-stable 2>/dev/null \
+    | grep Candidate \
+    | awk '{print $2}' || echo "")
 
-    # ensure repo exists
-    if ! command -v google-chrome >/dev/null 2>&1; then
-        echo "[WARN] Google Chrome is not installed via system packages."
-    fi
-
-    CURRENT_VERSION=$(google-chrome --version 2>/dev/null || echo "unknown")
-    echo "[INFO] Current version: $CURRENT_VERSION"
-
-    echo
-    read -rp "Enter specific version to install (leave empty for latest stable): " CHROME_VERSION
-
-    echo "[INFO] Updating package lists..."
-    sudo apt-get update -y
-
-    if [ -z "$CHROME_VERSION" ]; then
-        echo "[INFO] Installing latest stable Google Chrome..."
-        sudo apt-get install --only-upgrade -y google-chrome-stable || sudo apt-get install -y google-chrome-stable
-    else
-        echo "[INFO] Attempting to install version: $CHROME_VERSION"
-
-        # try exact version install (works if available in repo)
-        sudo apt-get install -y "google-chrome-stable=$CHROME_VERSION" || {
-            echo "[ERROR] Specified version not found in repo."
-            echo "[INFO] Falling back to latest stable..."
-            sudo apt-get install -y google-chrome-stable
-        }
-    fi
-
-    echo "[INFO] Chrome version after update:"
-    google-chrome --version || true
-
-else
+if [ -z "$LATEST_VERSION" ]; then
+    echo "[ERROR] Could not determine stable version."
     echo "[INFO] Skipping Chrome update."
+    exit 0
 fi
+
+echo "[INFO] Latest stable version: $LATEST_VERSION"
+
+echo
+echo "Options:"
+echo "  [1] Update to latest STABLE ($LATEST_VERSION)"
+echo "  [2] Keep current version"
+echo "  [3] Install specific stable version"
+
+read -rp "Choose option (1/2/3): " CHOICE
+
+case "$CHOICE" in
+
+    1)
+        echo "[INFO] Updating to latest stable version..."
+        sudo apt-get update -y
+        sudo apt-get install -y --only-upgrade google-chrome-stable || \
+        sudo apt-get install -y google-chrome-stable
+
+        ;;
+
+    2)
+        echo "[INFO] Skipping update."
+        ;;
+
+    3)
+        echo "[INFO] Available versions (stable repo):"
+        apt-cache madison google-chrome-stable | head -n 10
+
+        read -rp "Enter exact version string: " VERSION
+
+        if [ -n "$VERSION" ]; then
+            sudo apt-get update -y
+            sudo apt-get install -y "google-chrome-stable=$VERSION" || {
+                echo "[ERROR] Version not available, skipping."
+            }
+        else
+            echo "[WARN] No version entered, skipping."
+        fi
+        ;;
+
+    *)
+        echo "[WARN] Invalid choice, skipping update."
+        ;;
+esac
+
+echo
+echo "[INFO] Final Chrome version:"
+google-chrome --version || true
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
