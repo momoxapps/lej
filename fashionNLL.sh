@@ -125,11 +125,15 @@ pkill chrome || true
 echo
 echo "[STEP 4] Disabling network print discovery..."
 
-for service in cups-browsed avahi-daemon; do
-    if service_exists "$service.service"; then
-        sudo systemctl stop "$service" || true
-        sudo systemctl disable "$service" || true
-        sudo systemctl mask "$service" || true
+for unit in \
+    cups-browsed.service \
+    avahi-daemon.service \
+    avahi-daemon.socket
+do
+    if systemctl list-unit-files | grep -q "^$unit"; then
+        sudo systemctl stop "$unit" || true
+        sudo systemctl disable "$unit" || true
+        sudo systemctl mask "$unit" || true
     fi
 done
 
