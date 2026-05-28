@@ -77,8 +77,12 @@ service_exists() {
 echo
 echo "[STEP 1] Removing existing printers..."
 
-if command -v lpstat >/dev/null 2>&1; then
-    lpstat -p 2>/dev/null | awk '{print $2}' | while read -r printer; do
+PRINTERS=$(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+
+if [ -z "$PRINTERS" ]; then
+    echo "[INFO] No existing printers found. Skipping removal."
+else
+    echo "$PRINTERS" | while read -r printer; do
         if [ -n "$printer" ]; then
             echo "[INFO] Removing printer: $printer"
             sudo lpadmin -x "$printer" || true
