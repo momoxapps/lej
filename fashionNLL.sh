@@ -166,13 +166,20 @@ echo
 echo "[STEP 6] Updating Chrome policy..."
 
 POLICY_DIR="/etc/opt/chrome/policies/managed"
+BACKUP_DIR="/etc/opt/chrome/policies/backup"
+
 POLICY_FILE="${POLICY_DIR}/default_policy.json"
 
 TMP_FILE=$(mktemp)
 
-mkdir -p "$POLICY_DIR"
+sudo mkdir -p "$POLICY_DIR"
+sudo mkdir -p "$BACKUP_DIR"
 
-backup_file "$POLICY_FILE"
+# backup خارج managed حتى Chrome لا يقرأه
+if [ -f "$POLICY_FILE" ]; then
+    sudo cp "$POLICY_FILE" \
+    "${BACKUP_DIR}/default_policy.json.bak"
+fi
 
 STATION=""
 
@@ -211,6 +218,7 @@ sudo mv "$TMP_FILE" "$POLICY_FILE"
 sudo chmod 644 "$POLICY_FILE"
 
 echo "[INFO] Chrome policy updated successfully."
+
 
 ############################################
 # 7. CHROME DESKTOP MODE
