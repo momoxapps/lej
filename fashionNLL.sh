@@ -1,4 +1,3 @@
-```bash
 #!/usr/bin/env bash
 
 set -uo pipefail
@@ -220,7 +219,7 @@ echo "[INFO] Chrome policy updated successfully."
 echo
 echo "[STEP 7] Updating Chrome desktop entry..."
 
-DESKTOP_FILE="$HOME/.local/share/applications/google-chrome.desktop"
+DESKTOP_FILE="/home/user/.local/share/applications/google-chrome.desktop"
 
 if [ -f "$DESKTOP_FILE" ]; then
 
@@ -304,4 +303,3 @@ echo
 echo "================================================="
 echo "DONE: $(date)"
 echo "================================================="
-```
