@@ -258,7 +258,8 @@ fi
 ############################################
 # 8. ADD MADMIN TO PRINTER MANAGEMENT GROUP
 ############################################
-echo "[INFO] Ensuring madmin is in lpadmin group..."
+echo
+echo "[STEP 8] Ensuring madmin is in lpadmin group..."
 
 if id "madmin" &>/dev/null; then
     sudo /sbin/usermod -aG lpadmin madmin
@@ -271,7 +272,7 @@ fi
 ############################################
 
 echo
-echo "[STEP 8] Configuring printer MX00001..."
+echo "[STEP 9] Configuring printer MX00001..."
 
 while true; do
 
@@ -311,7 +312,7 @@ echo "[INFO] Printer set as default."
 ############################################
 
 echo
-echo "[STEP 9] Restarting CUPS..."
+echo "[STEP 10] Restarting CUPS..."
 
 sudo systemctl restart cups
 
@@ -320,7 +321,7 @@ sudo systemctl restart cups
 ############################################
 
 echo
-echo "[STEP 10] Verifying configuration..."
+echo "[STEP 11] Verifying configuration..."
 
 lpoptions -p MX00001 || true
 lpstat -p || true
