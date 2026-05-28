@@ -126,23 +126,18 @@ echo
 echo "[STEP 4] Disabling network print discovery..."
 
 # cups-browsed
-sudo systemctl stop cups-browsed || true
-sudo systemctl disable cups-browsed || true
-sudo systemctl mask cups-browsed || true
+sudo systemctl stop cups-browsed 2>/dev/null || true
+sudo systemctl mask cups-browsed 2>/dev/null || true
 
-# stop socket first
-sudo systemctl stop avahi-daemon.socket || true
-sudo systemctl disable avahi-daemon.socket || true
+# avahi socket first
+sudo systemctl stop avahi-daemon.socket 2>/dev/null || true
+sudo systemctl mask avahi-daemon.socket 2>/dev/null || true
 
-# then service
-sudo systemctl stop avahi-daemon || true
-sudo systemctl disable avahi-daemon || true
+# avahi service
+sudo systemctl stop avahi-daemon 2>/dev/null || true
+sudo systemctl mask avahi-daemon.service 2>/dev/null || true
 
-# finally mask both
-sudo systemctl mask avahi-daemon.service || true
-sudo systemctl mask avahi-daemon.socket || true
-
-sudo systemctl daemon-reload || true
+sudo systemctl daemon-reload 2>/dev/null || true
 
 ############################################
 # 5. PATCH CUPSD.CONF
