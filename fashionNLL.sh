@@ -113,14 +113,22 @@ sudo systemctl restart cups
 echo
 echo "[STEP 3] Cleaning Chrome print data..."
 
-CHROME_PROFILE="$HOME/.config/google-chrome/Default"
+TARGET_USER="${SUDO_USER:-user}"
+USER_HOME=$(eval echo "~$TARGET_USER")
+
+CHROME_PROFILE="$USER_HOME/.config/google-chrome/Default"
 
 if [ -d "$CHROME_PROFILE" ]; then
-    rm -rf "$CHROME_PROFILE"/Printer* || true
-    rm -rf "$CHROME_PROFILE"/printing* || true
+    echo "[INFO] Cleaning Chrome profile for user: $TARGET_USER"
+
+    sudo rm -rf "$CHROME_PROFILE/Printer"* 2>/dev/null || true
+    sudo rm -rf "$CHROME_PROFILE/printing"* 2>/dev/null || true
+else
+    echo "[INFO] Chrome profile not found for user: $TARGET_USER"
 fi
 
-pkill chrome || true
+pkill -u "$TARGET_USER" chrome 2>/dev/null || true
+
 
 ############################################
 # 4. DISABLE NETWORK PRINT DISCOVERY
