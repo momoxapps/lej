@@ -254,8 +254,20 @@ else
     echo "       $DESKTOP_FILE"
 fi
 
+
 ############################################
-# 8. CONFIGURE PRINTER
+# 8. ADD MADMIN TO PRINTER MANAGEMENT GROUP
+############################################
+echo "[INFO] Ensuring madmin is in lpadmin group..."
+
+if id "madmin" &>/dev/null; then
+    sudo /sbin/usermod -aG lpadmin madmin
+else
+    echo "[WARN] User madmin does not exist"
+fi
+
+############################################
+# 9. CONFIGURE PRINTER
 ############################################
 
 echo
@@ -295,7 +307,7 @@ sudo lpoptions -d MX00001
 echo "[INFO] Printer set as default."
 
 ############################################
-# 9. FINAL RESTART
+# 10. FINAL RESTART
 ############################################
 
 echo
@@ -304,7 +316,7 @@ echo "[STEP 9] Restarting CUPS..."
 sudo systemctl restart cups
 
 ############################################
-# 10. VERIFY
+# 11. VERIFY
 ############################################
 
 echo
