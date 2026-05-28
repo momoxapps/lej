@@ -62,7 +62,7 @@ backup_file() {
     local file="$1"
 
     if [ -f "$file" ]; then
-        sudo cp "$file" "${file}.$(date +%s).bak"
+        sudo cp -f "$file" "${file}.bak"
     fi
 }
 
@@ -219,7 +219,6 @@ sudo chmod 644 "$POLICY_FILE"
 
 echo "[INFO] Chrome policy updated successfully."
 
-
 ############################################
 # 7. CHROME DESKTOP MODE
 ############################################
@@ -231,7 +230,7 @@ DESKTOP_FILE="/home/user/.local/share/applications/google-chrome.desktop"
 
 if [ -f "$DESKTOP_FILE" ]; then
 
-    backup_file "$DESKTOP_FILE"
+    cp -f "$DESKTOP_FILE" "${DESKTOP_FILE}.bak"
 
     sed -i \
     's|^Exec=/usr/bin/google-chrome.*|Exec=/usr/bin/google-chrome --kiosk-printing --ignore-certificate-errors %U|' \
