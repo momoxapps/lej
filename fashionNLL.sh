@@ -125,17 +125,26 @@ pkill chrome || true
 echo
 echo "[STEP 4] Disabling network print discovery..."
 
-for unit in \
-    cups-browsed.service \
-    avahi-daemon.service \
-    avahi-daemon.socket
-do
-    if systemctl list-unit-files | grep -q "^$unit"; then
-        sudo systemctl stop "$unit" || true
-        sudo systemctl disable "$unit" || true
-        sudo systemctl mask "$unit" || true
-    fi
-done
+# cups-browsed
+if service_exists "cups-browsed.service"; then
+    sudo systemctl stop cups-browsed || true
+    sudo systemctl disable cups-browsed || true
+    sudo systemctl mask cups-browsed || true
+fi
+
+# avahi-daemon service
+if service_exists "avahi-daemon.service"; then
+    sudo systemctl stop avahi-daemon || true
+    sudo systemctl disable avahi-daemon || true
+    sudo systemctl mask avahi-daemon.service || true
+fi
+
+# avahi-daemon socket
+if service_exists "avahi-daemon.socket"; then
+    sudo systemctl stop avahi-daemon.socket || true
+    sudo systemctl disable avahi-daemon.socket || true
+    sudo systemctl mask avahi-daemon.socket || true
+fi
 
 ############################################
 # 5. PATCH CUPSD.CONF
@@ -179,7 +188,8 @@ TMP_FILE=$(mktemp)
 sudo mkdir -p "$POLICY_DIR"
 sudo mkdir -p "$BACKUP_DIR"
 
-# backup خارج managed حتى Chrome لا يقرأه
+# backup managed Chrome 
+
 if [ -f "$POLICY_FILE" ]; then
     sudo cp "$POLICY_FILE" \
     "${BACKUP_DIR}/default_policy.json.bak"
