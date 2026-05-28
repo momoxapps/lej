@@ -72,7 +72,7 @@ service_exists() {
 
 
 ############################################
-# X. GOOGLE CHROME STABLE UPDATE (CONTROLLED)
+# X. GOOGLE CHROME STABLE UPDATE (SAFE)
 ############################################
 
 echo
@@ -82,67 +82,70 @@ echo "[STEP X] Google Chrome Stable update check..."
 CURRENT_VERSION=$(google-chrome --version 2>/dev/null | awk '{print $3}' || echo "unknown")
 echo "[INFO] Current version: $CURRENT_VERSION"
 
-# get latest stable version from apt policy (reliable)
-echo "[INFO] Fetching latest STABLE version from system repo..."
+# fetch latest stable version directly from Google repo
+echo "[INFO] Fetching latest STABLE version from Google repository..."
 
-LATEST_VERSION=$(apt-cache policy google-chrome-stable 2>/dev/null \
-    | grep Candidate \
-    | awk '{print $2}' || echo "")
+LATEST_VERSION=$(curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
+    | grep -m1 "^Version:" \
+    | awk '{print $2}' || true)
 
+# safety check
 if [ -z "$LATEST_VERSION" ]; then
-    echo "[ERROR] Could not determine stable version."
-    echo "[INFO] Skipping Chrome update."
-    exit 0
+    echo "[WARN] Could not fetch latest Chrome stable version."
+    echo "[INFO] Skipping Chrome update safely."
+else
+    echo "[INFO] Latest stable version: $LATEST_VERSION"
+
+    # compare versions (simple string compare is OK for Chrome builds)
+    if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+        echo "[INFO] Chrome is already up to date."
+    else
+        echo
+        echo "Update available:"
+        echo "  Installed: $CURRENT_VERSION"
+        echo "  Available: $LATEST_VERSION"
+
+        echo
+        echo "Options:"
+        echo "  [1] Update to latest STABLE"
+        echo "  [2] Skip update"
+        echo "  [3] Show version only"
+
+        read -rp "Choose option (1/2/3): " CHOICE
+
+        case "$CHOICE" in
+
+            1)
+                echo "[INFO] Updating Google Chrome to latest stable..."
+
+                sudo apt-get update -y
+
+                sudo apt-get install -y --only-upgrade google-chrome-stable || {
+                    echo "[WARN] Upgrade failed, trying reinstall..."
+                    sudo apt-get install -y google-chrome-stable || true
+                }
+
+                echo "[INFO] Chrome updated successfully."
+                ;;
+
+            2)
+                echo "[INFO] Chrome update skipped by user."
+                ;;
+
+            3)
+                echo "[INFO] No changes made."
+                ;;
+
+            *)
+                echo "[WARN] Invalid option, skipping update."
+                ;;
+        esac
+    fi
 fi
-
-echo "[INFO] Latest stable version: $LATEST_VERSION"
-
-echo
-echo "Options:"
-echo "  [1] Update to latest STABLE ($LATEST_VERSION)"
-echo "  [2] Keep current version"
-echo "  [3] Install specific stable version"
-
-read -rp "Choose option (1/2/3): " CHOICE
-
-case "$CHOICE" in
-
-    1)
-        echo "[INFO] Updating to latest stable version..."
-        sudo apt-get update -y
-        sudo apt-get install -y --only-upgrade google-chrome-stable || \
-        sudo apt-get install -y google-chrome-stable
-
-        ;;
-
-    2)
-        echo "[INFO] Skipping update."
-        ;;
-
-    3)
-        echo "[INFO] Available versions (stable repo):"
-        apt-cache madison google-chrome-stable | head -n 10
-
-        read -rp "Enter exact version string: " VERSION
-
-        if [ -n "$VERSION" ]; then
-            sudo apt-get update -y
-            sudo apt-get install -y "google-chrome-stable=$VERSION" || {
-                echo "[ERROR] Version not available, skipping."
-            }
-        else
-            echo "[WARN] No version entered, skipping."
-        fi
-        ;;
-
-    *)
-        echo "[WARN] Invalid choice, skipping update."
-        ;;
-esac
 
 echo
 echo "[INFO] Final Chrome version:"
-google-chrome --version || true
+google-chrome --version 2>/dev/null || echo "[WARN] Chrome not found"
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
