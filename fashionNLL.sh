@@ -235,39 +235,59 @@ echo "[INFO] Final Chrome version:"
 google-chrome --version || true
 
 ############################################
-# 7. SAFE PROFILE CLEANUP (DOWNGRADE ONLY)
+# 7. STRONG SAFE PROFILE RESET (DOWNGRADE ONLY)
 ############################################
 
 if [ "$ACTION" = "downgrade" ]; then
 
-    echo "[INFO] Downgrade detected → cleaning ONLY Default profile safely..."
+    echo "[INFO] Downgrade detected → performing strong safe Chrome reset..."
 
-    TARGET_USER="${SUDO_USER:-user}"
-    USER_HOME=$(eval echo "~$TARGET_USER")
+    pkill -f chrome 2>/dev/null || true
 
-    CHROME_DEFAULT="/home/user/.config/google-chrome/Default"
+    for USER_DIR in /home/*; do
 
-    if [ -d "$CHROME_DEFAULT" ]; then
+        [ -d "$USER_DIR" ] || continue
 
-        echo "[INFO] Cleaning Chrome Default profile for user: $TARGET_USER"
+        CHROME_DIR="$USER_DIR/.config/google-chrome"
+        DEFAULT_DIR="$CHROME_DIR/Default"
 
-        # ❌ DO NOT TOUCH BOOKMARKS
-        # ❌ DO NOT TOUCH LOGIN DATA
-        # ❌ DO NOT TOUCH HISTORY
+        [ -d "$DEFAULT_DIR" ] || continue
 
-        # ✅ SAFE RESET ONLY (cache + runtime corruption fixes)
+        USERNAME=$(basename "$USER_DIR")
 
-        sudo rm -rf "$CHROME_DEFAULT/Cache" 2>/dev/null || true
-        sudo rm -rf "$CHROME_DEFAULT/Code Cache" 2>/dev/null || true
-        sudo rm -rf "$CHROME_DEFAULT/GPUCache" 2>/dev/null || true
-        sudo rm -rf "$CHROME_DEFAULT/Service Worker/CacheStorage" 2>/dev/null || true
-        sudo rm -rf "$CHROME_DEFAULT/Crashpad" 2>/dev/null || true
-        sudo rm -rf "$CHROME_DEFAULT/ShaderCache" 2>/dev/null || true
+        echo "[INFO] Cleaning Chrome profile for user: $USERNAME"
 
-        echo "[INFO] Default profile cleaned safely (bookmarks preserved)"
-    else
-        echo "[INFO] Chrome Default profile not found for user: $TARGET_USER"
-    fi
+
+        mkdir -p /tmp/chrome-safe-backup
+
+        cp -f "$DEFAULT_DIR/Bookmarks" \
+            /tmp/chrome-safe-backup/Bookmarks 2>/dev/null || true
+
+        cp -f "$DEFAULT_DIR/Login Data" \
+            /tmp/chrome-safe-backup/LoginData 2>/dev/null || true
+
+        cp -f "$DEFAULT_DIR/History" \
+            /tmp/chrome-safe-backup/History 2>/dev/null || true
+
+        sudo rm -rf "$CHROME_DIR"
+
+        mkdir -p "$DEFAULT_DIR"
+
+        cp -f /tmp/chrome-safe-backup/Bookmarks \
+            "$DEFAULT_DIR/Bookmarks" 2>/dev/null || true
+
+        cp -f /tmp/chrome-safe-backup/LoginData \
+            "$DEFAULT_DIR/Login Data" 2>/dev/null || true
+
+        cp -f /tmp/chrome-safe-backup/History \
+            "$DEFAULT_DIR/History" 2>/dev/null || true
+
+        chown -R "$USERNAME:$USERNAME" "$CHROME_DIR" 2>/dev/null || true
+
+        rm -rf /tmp/chrome-safe-backup
+
+        echo "[INFO] Chrome profile rebuilt safely for $USERNAME"
+    done
 fi
 
 echo "[INFO] Chrome version manager completed safely"
