@@ -72,7 +72,7 @@ service_exists() {
 
 
 ############################################
-# STEP X - CHROME VERSION MANAGER (ULIXEE)
+# STEP X - CHROME VERSION MANAGER (FIXED)
 ############################################
 
 echo
@@ -89,13 +89,20 @@ echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 TMP_JSON="/tmp/chrome_versions.json"
 
 echo "[INFO] Fetching versions list..."
-curl -s \
-https://raw.githubusercontent.com/ulixee/chrome-versions/main/versions.json \
-> "$TMP_JSON" || {
+
+wget -qO "$TMP_JSON" \
+https://raw.githubusercontent.com/ulixee/chrome-versions/main/versions.json || {
     echo "[ERROR] Failed to fetch versions.json"
-    echo "[INFO] Skipping Chrome update."
-    return 0
+    echo "[INFO] Skipping Chrome update safely."
+    exit 0
 }
+
+# حماية من ملف فاضي
+if [ ! -s "$TMP_JSON" ]; then
+    echo "[ERROR] versions.json is empty"
+    echo "[INFO] Skipping update."
+    exit 0
+fi
 
 echo "[INFO] Extracting latest stable versions..."
 
@@ -103,30 +110,43 @@ mapfile -t STABLE_VERSIONS < <(
 python3 - <<PY
 import json
 
-data = json.load(open("$TMP_JSON"))
+try:
+    data = json.load(open("$TMP_JSON"))
+except Exception:
+    print("")
+    exit(0)
 
 stable = []
 
-for v in data.get("versions", []):
+items = data.get("versions", data if isinstance(data, list) else [])
+
+for v in items:
     text = str(v).lower()
 
     if "stable" not in text:
         continue
 
-    version = v.get("version") or v.get("name") or v.get("channel")
+    version = None
+
+    if isinstance(v, dict):
+        version = v.get("version") or v.get("name")
+
+    if isinstance(v, str):
+        version = v
 
     if version:
         stable.append(version)
 
 stable = list(dict.fromkeys(stable))
 
-print("\n".join(stable[-5:]))
+for v in stable[-5:]:
+    print(v)
 PY
 )
 
 if [ ${#STABLE_VERSIONS[@]} -eq 0 ]; then
     echo "[WARN] No stable versions found."
-    echo "[INFO] Skipping."
+    echo "[INFO] Skipping Chrome update."
     exit 0
 fi
 
@@ -140,7 +160,7 @@ done
 
 echo
 echo "  [u] Upgrade to newest"
-echo "  [d] Downgrade (select older)"
+echo "  [d] Downgrade"
 echo "  [0] Skip"
 echo
 
@@ -155,7 +175,7 @@ case "$CHOICE" in
         ;;
 
     d|D)
-        read -rp "Choose version number (1-${#STABLE_VERSIONS[@]}): " IDX
+        read -rp "Select version (1-${#STABLE_VERSIONS[@]}): " IDX
         if [[ "$IDX" =~ ^[0-9]+$ ]]; then
             INSTALL_VERSION="${STABLE_VERSIONS[$((IDX-1))]}"
         fi
@@ -178,21 +198,19 @@ if [ -z "$INSTALL_VERSION" ]; then
     exit 0
 fi
 
-echo
 echo "[INFO] Selected version: $INSTALL_VERSION"
 
-echo "[INFO] Installing via apt..."
+echo "[INFO] Installing..."
 
 sudo apt update
 
 sudo apt install -y \
     --allow-downgrades \
-    google-chrome-stable="$INSTALL_VERSION" \
-|| {
-    echo "[ERROR] Installation failed"
-    echo "[INFO] This version may not exist in Google repo"
-    exit 1
-}
+    google-chrome-stable="$INSTALL_VERSION" || {
+        echo "[ERROR] Installation failed"
+        echo "[INFO] Falling back to current version"
+        exit 0
+    }
 
 echo
 echo "[INFO] Final Chrome version:"
