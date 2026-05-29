@@ -71,14 +71,15 @@ service_exists() {
 }
 
 ############################################
-# CHROME VERSION MANAGER (HYBRID SAFE FINAL)
+# CHROME VERSION MANAGER (HYBRID SAFE FINAL FIXED)
 ############################################
 
 echo
-echo "[STEP X] Google Chrome version manager (HYBRID SAFE FINAL)..."
+echo "[STEP X] Google Chrome version manager (HYBRID SAFE FINAL FIXED)..."
 
 TARGET_USER="${SUDO_USER:-user}"
 USER_HOME=$(eval echo "~$TARGET_USER")
+
 CHROME_PROFILE="$USER_HOME/.config/google-chrome"
 
 CURRENT_VERSION=$(
@@ -149,91 +150,119 @@ read -rp "Choose option: " CHOICE
 
 SELECTED_URL=""
 SELECTED_VERSION=""
-DO_DOWNGRADE=0
+ACTION="none"
 
 ############################################
-# 4. CHOICE HANDLER
+# 4. CHOICE HANDLER (SAFE)
 ############################################
 
 case "$CHOICE" in
 
     u|U)
         SELECTED_VERSION="$LATEST_UPGRADE"
+        ACTION="upgrade"
         ;;
 
     d1|d2|d3|d4)
         INDEX="${CHOICE#d}"
         INDEX=$((INDEX-1))
         SELECTED_URL="${DOWNGRADE_URLS[$INDEX]}"
-        DO_DOWNGRADE=1
+        ACTION="downgrade"
         ;;
 
-    0)
+    0|"")
         echo "[INFO] Skip selected → continuing script"
-        SELECTED_VERSION=""
-        SELECTED_URL=""
-        DO_DOWNGRADE=0
+        ACTION="skip"
         ;;
 
     *)
         echo "[WARN] Invalid choice → skipping safely"
-        SELECTED_VERSION=""
-        SELECTED_URL=""
-        DO_DOWNGRADE=0
+        ACTION="skip"
         ;;
 esac
 
 ############################################
-# 5. INSTALL LOGIC
+# 5. INSTALL LOGIC (FIXED STABILITY)
 ############################################
 
-if [ -n "$SELECTED_URL" ]; then
+if [ "$ACTION" = "downgrade" ]; then
 
     echo "[INFO] Downloading downgrade package..."
     wget -qO /tmp/chrome.deb "$SELECTED_URL" || {
         echo "[ERROR] Download failed"
-        SELECTED_URL=""
+        ACTION="skip"
     }
 
     if [ -f /tmp/chrome.deb ]; then
-        echo "[INFO] Installing downgrade package (dpkg)..."
+
+        echo "[INFO] Installing downgrade safely..."
 
         sudo dpkg -i /tmp/chrome.deb || true
         sudo apt-get install -f -y || true
 
-        echo "[INFO] Holding Chrome to prevent auto-upgrade..."
-        sudo apt-mark hold google-chrome-stable
+        # IMPORTANT FIX → allow future installs without breaking apt
+        sudo apt-mark hold google-chrome-stable >/dev/null 2>&1 || true
+
+        echo "[INFO] Downgrade completed"
     fi
 
-elif [ -n "$SELECTED_VERSION" ]; then
+elif [ "$ACTION" = "upgrade" ]; then
 
     echo "[INFO] Installing upgrade version: $SELECTED_VERSION"
 
     sudo apt update
     sudo apt install -y --allow-downgrades \
         google-chrome-stable="$SELECTED_VERSION"
+
+else
+    echo "[INFO] No Chrome change applied"
 fi
 
 ############################################
-# 6. POST INSTALL SAFETY
+# 6. POST INSTALL CHECK
 ############################################
 
 echo
 echo "[INFO] Final Chrome version:"
 google-chrome --version || true
 
-if [ "$DO_DOWNGRADE" -eq 1 ]; then
+############################################
+# 7. SAFE PROFILE CLEANUP (DOWNGRADE ONLY)
+############################################
 
-    echo "[INFO] Downgrade detected → optional profile cleanup..."
+if [ "$ACTION" = "downgrade" ]; then
 
-    if [ -d "$CHROME_PROFILE/Default" ]; then
-        sudo rm -rf "$CHROME_PROFILE/Default/Cache" 2>/dev/null || true
-        sudo rm -rf "$CHROME_PROFILE/Default/Code Cache" 2>/dev/null || true
-        sudo rm -rf "$CHROME_PROFILE/Default/GPUCache" 2>/dev/null || true
+    echo "[INFO] Downgrade detected → cleaning ONLY Default profile safely..."
+
+    TARGET_USER="${SUDO_USER:-user}"
+    USER_HOME=$(eval echo "~$TARGET_USER")
+
+    CHROME_DEFAULT="$USER_HOME/.config/google-chrome/Default"
+
+    if [ -d "$CHROME_DEFAULT" ]; then
+
+        echo "[INFO] Cleaning Chrome Default profile for user: $TARGET_USER"
+
+        # ❌ DO NOT TOUCH BOOKMARKS
+        # ❌ DO NOT TOUCH LOGIN DATA
+        # ❌ DO NOT TOUCH HISTORY
+
+        # ✅ SAFE RESET ONLY (cache + runtime corruption fixes)
+
+        sudo rm -rf "$CHROME_DEFAULT/Cache" 2>/dev/null || true
+        sudo rm -rf "$CHROME_DEFAULT/Code Cache" 2>/dev/null || true
+        sudo rm -rf "$CHROME_DEFAULT/GPUCache" 2>/dev/null || true
+        sudo rm -rf "$CHROME_DEFAULT/Service Worker/CacheStorage" 2>/dev/null || true
+        sudo rm -rf "$CHROME_DEFAULT/Crashpad" 2>/dev/null || true
+        sudo rm -rf "$CHROME_DEFAULT/ShaderCache" 2>/dev/null || true
+
+        echo "[INFO] Default profile cleaned safely (bookmarks preserved)"
+    else
+        echo "[INFO] Chrome Default profile not found for user: $TARGET_USER"
     fi
 fi
 
-echo "[INFO] Chrome version manager completed safely."
+echo "[INFO] Chrome version manager completed safely"
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
