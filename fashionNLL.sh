@@ -242,11 +242,12 @@ if [ "$ACTION" = "downgrade" ]; then
 
     echo "[INFO] Downgrade detected → resetting Chrome profile..."
 
-    pkill -f chrome 2>/dev/null || true
+    sudo -u "$TARGET_USER" pkill -9 -x chrome 2>/dev/null || true
+    sudo -u "$TARGET_USER" pkill -9 -x chrome_crashpad_handler 2>/dev/null || true
 
     sleep 2
 
-    sudo rm -rf /home/user/.config/google-chrome
+    sudo rm -rf "$USER_HOME/.config/google-chrome"
 
     echo "[INFO] Chrome profile cleaned successfully"
 fi
