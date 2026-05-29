@@ -70,13 +70,12 @@ service_exists() {
     systemctl list-unit-files | grep -q "^$1"
 }
 
-
 ############################################
-# STEP X - CHROME VERSION MANAGER (FIXED)
+# CHROME VERSION MANAGER (ROBUST)
 ############################################
 
 echo
-echo "[STEP X] Google Chrome version manager (Ulixee source)..."
+echo "[STEP X] Google Chrome version manager..."
 
 CURRENT_VERSION=$(
 google-chrome --version 2>/dev/null \
@@ -86,98 +85,57 @@ google-chrome --version 2>/dev/null \
 
 echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 
-TMP_JSON="/tmp/chrome_versions.json"
+echo "[INFO] Updating package lists..."
+sudo apt update -qq
 
-echo "[INFO] Fetching versions list..."
+echo
+echo "[INFO] Fetching available versions from Google repo..."
 
-wget -qO "$TMP_JSON" \
-https://raw.githubusercontent.com/ulixee/chrome-versions/main/versions.json || {
-    echo "[ERROR] Failed to fetch versions.json"
-    echo "[INFO] Skipping Chrome update safely."
-    exit 0
-}
-
-# حماية من ملف فاضي
-if [ ! -s "$TMP_JSON" ]; then
-    echo "[ERROR] versions.json is empty"
-    echo "[INFO] Skipping update."
-    exit 0
-fi
-
-echo "[INFO] Extracting latest stable versions..."
-
-mapfile -t STABLE_VERSIONS < <(
-python3 - <<PY
-import json
-
-try:
-    data = json.load(open("$TMP_JSON"))
-except Exception:
-    print("")
-    exit(0)
-
-stable = []
-
-items = data.get("versions", data if isinstance(data, list) else [])
-
-for v in items:
-    text = str(v).lower()
-
-    if "stable" not in text:
-        continue
-
-    version = None
-
-    if isinstance(v, dict):
-        version = v.get("version") or v.get("name")
-
-    if isinstance(v, str):
-        version = v
-
-    if version:
-        stable.append(version)
-
-stable = list(dict.fromkeys(stable))
-
-for v in stable[-5:]:
-    print(v)
-PY
+mapfile -t ALL_VERSIONS < <(
+apt-cache madison google-chrome-stable \
+| awk '{print $3}' \
+| grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' \
+| sort -Vu
 )
 
-if [ ${#STABLE_VERSIONS[@]} -eq 0 ]; then
-    echo "[WARN] No stable versions found."
-    echo "[INFO] Skipping Chrome update."
+if [ ${#ALL_VERSIONS[@]} -eq 0 ]; then
+    echo "[WARN] No versions found in repo."
     exit 0
 fi
 
+# آخر 5 نسخ (stable history)
+mapfile -t VERSIONS < <(
+printf "%s\n" "${ALL_VERSIONS[@]}" | tail -n 5
+)
+
 echo
-echo "Last 5 stable Chrome versions:"
+echo "Available Chrome versions:"
 echo
 
-for i in "${!STABLE_VERSIONS[@]}"; do
-    printf "  [%d] %s\n" "$((i+1))" "${STABLE_VERSIONS[$i]}"
+for i in "${!VERSIONS[@]}"; do
+    printf "  [%d] %s\n" "$((i+1))" "${VERSIONS[$i]}"
 done
 
 echo
-echo "  [u] Upgrade to newest"
-echo "  [d] Downgrade"
+echo "  [u] Upgrade to latest"
+echo "  [d] Downgrade (choose older)"
 echo "  [0] Skip"
 echo
 
 read -rp "Choose option: " CHOICE
 
-INSTALL_VERSION=""
+SELECTED=""
 
 case "$CHOICE" in
 
     u|U)
-        INSTALL_VERSION="${STABLE_VERSIONS[-1]}"
+        SELECTED="${VERSIONS[-1]}"
         ;;
 
     d|D)
-        read -rp "Select version (1-${#STABLE_VERSIONS[@]}): " IDX
+        read -rp "Select version (1-${#VERSIONS[@]}): " IDX
         if [[ "$IDX" =~ ^[0-9]+$ ]]; then
-            INSTALL_VERSION="${STABLE_VERSIONS[$((IDX-1))]}"
+            SELECTED="${VERSIONS[$((IDX-1))]}"
         fi
         ;;
 
@@ -188,27 +146,26 @@ case "$CHOICE" in
 
     *)
         if [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
-            INSTALL_VERSION="${STABLE_VERSIONS[$((CHOICE-1))]}"
+            SELECTED="${VERSIONS[$((CHOICE-1))]}"
         fi
         ;;
 esac
 
-if [ -z "$INSTALL_VERSION" ]; then
+if [ -z "$SELECTED" ]; then
     echo "[WARN] No version selected."
     exit 0
 fi
 
-echo "[INFO] Selected version: $INSTALL_VERSION"
+echo
+echo "[INFO] Selected version: $SELECTED"
 
 echo "[INFO] Installing..."
 
-sudo apt update
-
 sudo apt install -y \
     --allow-downgrades \
-    google-chrome-stable="$INSTALL_VERSION" || {
+    google-chrome-stable="$SELECTED" || {
         echo "[ERROR] Installation failed"
-        echo "[INFO] Falling back to current version"
+        echo "[INFO] Keeping current version: $CURRENT_VERSION"
         exit 0
     }
 
