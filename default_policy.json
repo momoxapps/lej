@@ -26,7 +26,12 @@
   "MediaRouterCastAllowAllIPs": false,
   "MetricsReportingEnabled": false,
   "PasswordManagerEnabled": false,
-
+  
+  "PrivacySandboxPromptEnabled": false,
+  "PrivacySandboxAdTopicsEnabled": false,
+  "PrivacySandboxSiteEnabledAdsEnabled": false,
+  "PrivacySandboxAdMeasurementEnabled": false,
+  
   "PrintingEnabled": true,
   "DefaultPrinterSelection": "{ \"namePattern\": \"MX00001\" }",
   "PrintPreviewUseSystemDefaultPrinter": true,
