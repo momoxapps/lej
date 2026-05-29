@@ -45,7 +45,8 @@
   "SpellcheckEnabled": false,
 
   "DesktopSharingHubEnabled": false,
-
+  "WebAppInstallByUserEnabled": false,
+  
   "CommandLineFlagSecurityWarningsEnabled": false,
 
   "PromptForDownloadLocation": false,
