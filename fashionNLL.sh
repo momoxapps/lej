@@ -78,28 +78,48 @@ service_exists() {
 echo
 echo "[STEP X] Google Chrome Stable update check..."
 
-# current version
+# current installed version
 CURRENT_VERSION=$(google-chrome --version 2>/dev/null | awk '{print $3}' || echo "unknown")
+
 echo "[INFO] Current version: $CURRENT_VERSION"
 
-# fetch latest stable version directly from Google repo
 echo "[INFO] Fetching latest STABLE version from Google repository..."
 
-LATEST_VERSION=$(curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
-    | grep -m1 "^Version:" \
-    | awk '{print $2}' || true)
+LATEST_VERSION=$(python3 <<'EOF'
+import urllib.request
+import re
+
+url = "https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages"
+
+try:
+    with urllib.request.urlopen(url, timeout=10) as r:
+        data = r.read().decode("utf-8")
+
+    match = re.search(r"^Version:\s*(.+)$", data, re.MULTILINE)
+
+    if match:
+        print(match.group(1).strip())
+
+except Exception:
+    pass
+EOF
+)
 
 # safety check
 if [ -z "$LATEST_VERSION" ]; then
     echo "[WARN] Could not fetch latest Chrome stable version."
     echo "[INFO] Skipping Chrome update safely."
+
 else
+
     echo "[INFO] Latest stable version: $LATEST_VERSION"
 
-    # compare versions (simple string compare is OK for Chrome builds)
     if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+
         echo "[INFO] Chrome is already up to date."
+
     else
+
         echo
         echo "Update available:"
         echo "  Installed: $CURRENT_VERSION"
@@ -116,7 +136,7 @@ else
         case "$CHOICE" in
 
             1)
-                echo "[INFO] Updating Google Chrome to latest stable..."
+                echo "[INFO] Updating Google Chrome..."
 
                 sudo apt-get update -y
 
