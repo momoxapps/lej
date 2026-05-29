@@ -245,7 +245,7 @@ if [ "$ACTION" = "downgrade" ]; then
     TARGET_USER="${SUDO_USER:-user}"
     USER_HOME=$(eval echo "~$TARGET_USER")
 
-    CHROME_DEFAULT="$USER_HOME/.config/google-chrome/Default"
+    CHROME_DEFAULT="/home/user.config/google-chrome/Default"
 
     if [ -d "$CHROME_DEFAULT" ]; then
 
