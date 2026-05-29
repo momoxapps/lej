@@ -72,20 +72,19 @@ service_exists() {
 
 
 ############################################
-# X. GOOGLE CHROME STABLE UPDATE (SAFE)
+# X. GOOGLE CHROME VERSION MANAGER
 ############################################
 
 echo
-echo "[STEP X] Google Chrome Stable update check..."
+echo "[STEP X] Google Chrome version manager..."
 
-# current installed version
 CURRENT_VERSION=$(google-chrome --version 2>/dev/null | awk '{print $3}' || echo "unknown")
 
 echo "[INFO] Current version: $CURRENT_VERSION"
 
-echo "[INFO] Fetching latest STABLE version from Google repository..."
+echo "[INFO] Fetching available stable versions from Google repository..."
 
-LATEST_VERSION=$(python3 <<'EOF'
+VERSIONS=$(python3 <<'EOF'
 import urllib.request
 import re
 
@@ -95,71 +94,82 @@ try:
     with urllib.request.urlopen(url, timeout=10) as r:
         data = r.read().decode("utf-8")
 
-    match = re.search(r"^Version:\s*(.+)$", data, re.MULTILINE)
+    versions = re.findall(r"^Version:\s*(.+)$", data, re.MULTILINE)
 
-    if match:
-        print(match.group(1).strip())
+    unique_versions = []
+
+    for v in versions:
+        if v not in unique_versions:
+            unique_versions.append(v)
+
+    # print first 10 stable versions
+    for v in unique_versions[:10]:
+        print(v)
 
 except Exception:
     pass
 EOF
 )
 
-# safety check
-if [ -z "$LATEST_VERSION" ]; then
-    echo "[WARN] Could not fetch latest Chrome stable version."
-    echo "[INFO] Skipping Chrome update safely."
+if [ -z "$VERSIONS" ]; then
+    echo "[WARN] Could not fetch Chrome versions."
+    echo "[INFO] Skipping Chrome version management."
 
 else
 
-    echo "[INFO] Latest stable version: $LATEST_VERSION"
+    echo
+    echo "Available stable versions:"
+    echo
 
-    if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+    i=1
 
-        echo "[INFO] Chrome is already up to date."
+    declare -a VERSION_ARRAY
+
+    while read -r version; do
+        VERSION_ARRAY[$i]="$version"
+        echo "  [$i] $version"
+        ((i++))
+    done <<< "$VERSIONS"
+
+    echo
+    echo "  [0] Skip"
+
+    echo
+    read -rp "Choose version number: " VERSION_CHOICE
+
+    if [ "$VERSION_CHOICE" = "0" ]; then
+
+        echo "[INFO] Skipping Chrome changes."
+
+    elif [[ -n "${VERSION_ARRAY[$VERSION_CHOICE]:-}" ]]; then
+
+        SELECTED_VERSION="${VERSION_ARRAY[$VERSION_CHOICE]}"
+
+        echo
+        echo "[INFO] Selected version: $SELECTED_VERSION"
+
+        sudo apt-get update -y
+
+        if [ "$SELECTED_VERSION" = "$CURRENT_VERSION" ]; then
+
+            echo "[INFO] Selected version is already installed."
+
+        else
+
+            echo "[INFO] Installing Chrome version: $SELECTED_VERSION"
+
+            sudo apt-get install -y \
+                --allow-downgrades \
+                "google-chrome-stable=$SELECTED_VERSION" || {
+
+                echo "[ERROR] Failed to install selected version."
+            }
+        fi
 
     else
 
-        echo
-        echo "Update available:"
-        echo "  Installed: $CURRENT_VERSION"
-        echo "  Available: $LATEST_VERSION"
+        echo "[WARN] Invalid selection. Skipping."
 
-        echo
-        echo "Options:"
-        echo "  [1] Update to latest STABLE"
-        echo "  [2] Skip update"
-        echo "  [3] Show version only"
-
-        read -rp "Choose option (1/2/3): " CHOICE
-
-        case "$CHOICE" in
-
-            1)
-                echo "[INFO] Updating Google Chrome..."
-
-                sudo apt-get update -y
-
-                sudo apt-get install -y --only-upgrade google-chrome-stable || {
-                    echo "[WARN] Upgrade failed, trying reinstall..."
-                    sudo apt-get install -y google-chrome-stable || true
-                }
-
-                echo "[INFO] Chrome updated successfully."
-                ;;
-
-            2)
-                echo "[INFO] Chrome update skipped by user."
-                ;;
-
-            3)
-                echo "[INFO] No changes made."
-                ;;
-
-            *)
-                echo "[WARN] Invalid option, skipping update."
-                ;;
-        esac
     fi
 fi
 
