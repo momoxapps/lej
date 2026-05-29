@@ -44,7 +44,7 @@
   "TranslateEnabled": false,
   "SpellcheckEnabled": false,
 
-  "DesktopSharingHubEnabled": false,
+  "DesktopSharingHubEnabled": true,
   "WebAppInstallByUserEnabled": false,
   
   "CommandLineFlagSecurityWarningsEnabled": false,
