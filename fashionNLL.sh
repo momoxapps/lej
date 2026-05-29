@@ -208,11 +208,19 @@ if [ "$ACTION" = "downgrade" ]; then
 
 elif [ "$ACTION" = "upgrade" ]; then
 
+    echo "[INFO] Removing hold from Chrome package..."
+    sudo apt-mark unhold google-chrome-stable >/dev/null 2>&1 || true
+
     echo "[INFO] Installing upgrade version: $SELECTED_VERSION"
 
     sudo apt update
-    sudo apt install -y --allow-downgrades \
+
+    sudo apt install -y \
+        --allow-downgrades \
+        --allow-change-held-packages \
         google-chrome-stable="$SELECTED_VERSION"
+
+    echo "[INFO] Upgrade completed"
 
 else
     echo "[INFO] No Chrome change applied"
