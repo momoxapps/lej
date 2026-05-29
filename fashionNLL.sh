@@ -72,62 +72,12 @@ service_exists() {
 
 
 ############################################
-# XFCE SAFE SESSION HANDLER (FINAL ROOT FIX)
-############################################
-
-echo
-echo "[STEP X] XFCE session safe restart (FINAL)..."
-
-TARGET_USER="${SUDO_USER:-user}"
-USER_ID=$(id -u "$TARGET_USER")
-
-# 1. get active graphical session
-SESSION_ID=$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '
-$3==u {print $1}
-' | head -n1)
-
-if [ -z "$SESSION_ID" ]; then
-    echo "[ERROR] No session found for $TARGET_USER"
-    exit 1
-fi
-
-# 2. get DISPLAY
-DISPLAY=$(loginctl show-session "$SESSION_ID" -p Display --value 2>/dev/null)
-
-if [ -z "$DISPLAY" ]; then
-    DISPLAY=":0"
-fi
-
-# 3. DBUS fallback safe
-DBUS_PATH="/run/user/$USER_ID/bus"
-
-if [ ! -S "$DBUS_PATH" ]; then
-    echo "[WARN] DBUS socket not found, trying alternative session..."
-    DBUS_PATH=$(find /run/user/$USER_ID -name bus 2>/dev/null | head -n1)
-fi
-
-echo "[INFO] User: $TARGET_USER"
-echo "[INFO] Session: $SESSION_ID"
-echo "[INFO] DISPLAY: $DISPLAY"
-echo "[INFO] DBUS: $DBUS_PATH"
-
-# 4. safe runner
-run_as_user() {
-    sudo -u "$TARGET_USER" \
-        env \
-        DISPLAY="$DISPLAY" \
-        XAUTHORITY="/home/$TARGET_USER/.Xauthority" \
-        DBUS_SESSION_BUS_ADDRESS="unix:path=$DBUS_PATH" \
-        "$@"
-}
-
-############################################
 # FIX XFCE PANEL CONFIG FIRST
 ############################################
 
 echo "[STEP X] Fixing XFCE panel settings..."
 
-XFCONF_FILE="/home/$TARGET_USER/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+XFCONF_FILE="/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 
 if [ -f "$XFCONF_FILE" ]; then
     sudo sed -i \
@@ -140,23 +90,6 @@ if [ -f "$XFCONF_FILE" ]; then
 
     chown "$TARGET_USER:$TARGET_USER" "$XFCONF_FILE"
 fi
-
-############################################
-# 5. SAFE PANEL RESTART
-############################################
-
-echo "[STEP X] Restarting XFCE panel safely..."
-
-run_as_user pkill xfce4-panel 2>/dev/null || true
-sleep 2
-
-run_as_user xfce4-panel --restart || {
-    echo "[WARN] Normal restart failed → fallback method..."
-
-    run_as_user dbus-launch xfce4-panel &
-}
-
-echo "[INFO] XFCE panel restart completed."
 
 ############################################
 # CHROME VERSION MANAGER (HYBRID SAFE FINAL FIXED)
