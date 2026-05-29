@@ -70,6 +70,47 @@ service_exists() {
     systemctl list-unit-files | grep -q "^$1"
 }
 
+
+############################################
+# XFCE PANEL FIX (ICON SIZE / PANEL SIZE)
+############################################
+
+echo
+echo "[STEP X] Fixing XFCE panel size settings..."
+
+TARGET_USER="${SUDO_USER:-user}"
+USER_HOME=$(eval echo "~$TARGET_USER")
+
+XFCE_FILE="/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+
+if [ ! -f "$XFCE_FILE" ]; then
+    echo "[WARN] XFCE config not found: $XFCE_FILE"
+else
+    echo "[INFO] Checking XFCE panel configuration..."
+
+    backup_file "$XFCE_FILE"
+
+    # ---- ICON SIZE FIX ----
+    if grep -q 'name="icon-size"' "$XFCE_FILE"; then
+        sudo sed -i 's|<property name="icon-size" type="uint" value="[^"]*"/>|<property name="icon-size" type="uint" value="22"/>|g' "$XFCE_FILE"
+    else
+        sudo sed -i '/<property name="plugin-1"/a \        <property name="icon-size" type="uint" value="22"/>' "$XFCE_FILE"
+    fi
+
+    # ---- PANEL SIZE FIX ----
+    if grep -q 'name="size"' "$XFCE_FILE"; then
+        sudo sed -i 's|<property name="size" type="uint" value="[^"]*"/>|<property name="size" type="uint" value="30"/>|g' "$XFCE_FILE"
+    else
+        sudo sed -i '/<property name="panel-1"/a \      <property name="size" type="uint" value="30"/>' "$XFCE_FILE"
+    fi
+
+    echo "[INFO] XFCE panel configuration updated."
+
+    # restart panel (optional but recommended)
+    pkill xfce4-panel 2>/dev/null || true
+    nohup xfce4-panel >/dev/null 2>&1 &
+fi
+
 ############################################
 # CHROME VERSION MANAGER (HYBRID SAFE FINAL FIXED)
 ############################################
