@@ -75,7 +75,11 @@ service_exists() {
 ############################################
 
 echo
-echo "[STEP X] Google Chrome version manager..."
+echo "[STEP X] Google Chrome version manager (HYBRID SAFE)..."
+
+TARGET_USER="${SUDO_USER:-user}"
+USER_HOME=$(eval echo "~$TARGET_USER")
+CHROME_PROFILE="$USER_HOME/.config/google-chrome"
 
 CURRENT_VERSION=$(
 google-chrome --version 2>/dev/null \
@@ -86,13 +90,13 @@ google-chrome --version 2>/dev/null \
 echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 
 ############################################
-# 1. GET OFFICIAL AVAILABLE (UPGRADE ONLY)
+# 1. UPGRADE VERSION (OFFICIAL APT)
 ############################################
 
-echo "[INFO] Fetching latest available versions (Google repo)..."
+echo "[INFO] Fetching available stable version from Google repo..."
 
 mapfile -t UPGRADE_VERSIONS < <(
-apt-cache madison google-chrome-stable \
+apt-cache madison google-chrome-stable 2>/dev/null \
 | awk '{print $3}' \
 | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' \
 | sort -Vu
@@ -101,14 +105,14 @@ apt-cache madison google-chrome-stable \
 LATEST_UPGRADE="${UPGRADE_VERSIONS[-1]:-}"
 
 ############################################
-# 2. HARD-CODED VERIFIED DOWNGRADES
+# 2. VERIFIED DOWNGRADE LIST (STATIC SAFE)
 ############################################
 
 DOWNGRADE_URLS=(
-"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_143.0.7499.40-1_amd64.deb"
-"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_145.0.7632.159-1_amd64.deb"
-"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_146.0.7680.177-1_amd64.deb"
 "http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_147.0.7727.137-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_146.0.7680.177-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_145.0.7632.159-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_143.0.7499.40-1_amd64.deb"
 )
 
 DOWNGRADE_NAMES=()
@@ -128,7 +132,7 @@ echo "[UPGRADE]"
 if [ -n "$LATEST_UPGRADE" ]; then
     echo "  [u] Upgrade to latest: $LATEST_UPGRADE"
 else
-    echo "  [u] (No upgrade available)"
+    echo "  [u] No upgrade available"
 fi
 
 echo
@@ -138,75 +142,94 @@ for i in "${!DOWNGRADE_NAMES[@]}"; do
 done
 
 echo
-echo "  [0] Skip"
+echo "  [0] Skip (continue script)"
 echo
 
 read -rp "Choose option: " CHOICE
 
 SELECTED_URL=""
 SELECTED_VERSION=""
+DO_DOWNGRADE=0
 
 ############################################
-# 4. LOGIC
+# 4. CHOICE HANDLER (SAFE)
 ############################################
 
 case "$CHOICE" in
 
     u|U)
-        if [ -n "$LATEST_UPGRADE" ]; then
-            SELECTED_VERSION="$LATEST_UPGRADE"
-        fi
+        SELECTED_VERSION="$LATEST_UPGRADE"
         ;;
 
     d1|d2|d3|d4)
         INDEX="${CHOICE#d}"
         INDEX=$((INDEX-1))
         SELECTED_URL="${DOWNGRADE_URLS[$INDEX]}"
-        SELECTED_VERSION="$(basename "$SELECTED_URL")"
+        DO_DOWNGRADE=1
         ;;
 
     0)
-        echo "[INFO] Skipping Chrome update."
-        exit 0
+        echo "[INFO] Skipping Chrome update (continuing script)..."
+        SELECTED_VERSION=""
+        SELECTED_URL=""
+        DO_DOWNGRADE=0
         ;;
 
     *)
-        echo "[WARN] Invalid choice."
-        exit 0
+        echo "[WARN] Invalid choice → skipping safely"
+        SELECTED_VERSION=""
+        SELECTED_URL=""
+        DO_DOWNGRADE=0
         ;;
 esac
 
 ############################################
-# 5. EXECUTION
+# 5. INSTALL LOGIC
 ############################################
 
 if [ -n "$SELECTED_URL" ]; then
 
-    echo
     echo "[INFO] Downloading downgrade package..."
-    wget -qO /tmp/chrome.deb "$SELECTED_URL"
+    wget -qO /tmp/chrome.deb "$SELECTED_URL" || {
+        echo "[ERROR] Download failed"
+        SELECTED_URL=""
+    }
 
-    echo "[INFO] Installing downgrade package..."
-    sudo dpkg -i /tmp/chrome.deb || sudo apt -f install -y
+    if [ -f /tmp/chrome.deb ]; then
+        echo "[INFO] Installing downgrade package..."
+        sudo apt install -y /tmp/chrome.deb
+    fi
 
 elif [ -n "$SELECTED_VERSION" ]; then
 
-    echo
     echo "[INFO] Installing upgrade version: $SELECTED_VERSION"
 
     sudo apt update
-    sudo apt install -y \
-        --allow-downgrades \
+    sudo apt install -y --allow-downgrades \
         google-chrome-stable="$SELECTED_VERSION"
 fi
 
 ############################################
-# 6. RESULT
+# 6. POST-INSTALL SAFETY (CRITICAL FIX)
 ############################################
 
 echo
 echo "[INFO] Final Chrome version:"
 google-chrome --version || true
+
+if [ "$DO_DOWNGRADE" -eq 1 ]; then
+
+    echo "[INFO] Downgrade detected → cleaning profile to prevent crash..."
+
+    if [ -d "$CHROME_PROFILE/Default" ]; then
+        sudo rm -rf "$CHROME_PROFILE/Default/Local State" 2>/dev/null || true
+        sudo rm -rf "$CHROME_PROFILE/Default/Cache" 2>/dev/null || true
+        sudo rm -rf "$CHROME_PROFILE/Default/Code Cache" 2>/dev/null || true
+        sudo rm -rf "$CHROME_PROFILE/Default/GPUCache" 2>/dev/null || true
+    fi
+fi
+
+echo "[INFO] Chrome manager completed safely."
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
