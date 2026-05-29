@@ -71,7 +71,7 @@ service_exists() {
 }
 
 ############################################
-# CHROME VERSION MANAGER (ROBUST)
+# CHROME VERSION MANAGER (HYBRID SAFE)
 ############################################
 
 echo
@@ -85,58 +85,84 @@ google-chrome --version 2>/dev/null \
 
 echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 
-echo "[INFO] Updating package lists..."
-sudo apt update -qq
+############################################
+# 1. GET OFFICIAL AVAILABLE (UPGRADE ONLY)
+############################################
 
-echo
-echo "[INFO] Fetching available versions from Google repo..."
+echo "[INFO] Fetching latest available versions (Google repo)..."
 
-mapfile -t ALL_VERSIONS < <(
+mapfile -t UPGRADE_VERSIONS < <(
 apt-cache madison google-chrome-stable \
 | awk '{print $3}' \
 | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' \
 | sort -Vu
 )
 
-if [ ${#ALL_VERSIONS[@]} -eq 0 ]; then
-    echo "[WARN] No versions found in repo."
-    exit 0
-fi
+LATEST_UPGRADE="${UPGRADE_VERSIONS[-1]:-}"
 
+############################################
+# 2. HARD-CODED VERIFIED DOWNGRADES
+############################################
 
-mapfile -t VERSIONS < <(
-printf "%s\n" "${ALL_VERSIONS[@]}" | tail -n 5
+DOWNGRADE_URLS=(
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_143.0.7499.40-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_145.0.7632.159-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_146.0.7680.177-1_amd64.deb"
+"http://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_147.0.7727.137-1_amd64.deb"
 )
 
+DOWNGRADE_NAMES=()
+for url in "${DOWNGRADE_URLS[@]}"; do
+    DOWNGRADE_NAMES+=("$(basename "$url")")
+done
+
+############################################
+# 3. MENU
+############################################
+
 echo
-echo "Available Chrome versions:"
+echo "Available options:"
 echo
 
-for i in "${!VERSIONS[@]}"; do
-    printf "  [%d] %s\n" "$((i+1))" "${VERSIONS[$i]}"
+echo "[UPGRADE]"
+if [ -n "$LATEST_UPGRADE" ]; then
+    echo "  [u] Upgrade to latest: $LATEST_UPGRADE"
+else
+    echo "  [u] (No upgrade available)"
+fi
+
+echo
+echo "[DOWNGRADE]"
+for i in "${!DOWNGRADE_NAMES[@]}"; do
+    printf "  [d%d] %s\n" "$((i+1))" "${DOWNGRADE_NAMES[$i]}"
 done
 
 echo
-echo "  [u] Upgrade to latest"
-echo "  [d] Downgrade (choose older)"
 echo "  [0] Skip"
 echo
 
 read -rp "Choose option: " CHOICE
 
-SELECTED=""
+SELECTED_URL=""
+SELECTED_VERSION=""
+
+############################################
+# 4. LOGIC
+############################################
 
 case "$CHOICE" in
 
     u|U)
-        SELECTED="${VERSIONS[-1]}"
+        if [ -n "$LATEST_UPGRADE" ]; then
+            SELECTED_VERSION="$LATEST_UPGRADE"
+        fi
         ;;
 
-    d|D)
-        read -rp "Select version (1-${#VERSIONS[@]}): " IDX
-        if [[ "$IDX" =~ ^[0-9]+$ ]]; then
-            SELECTED="${VERSIONS[$((IDX-1))]}"
-        fi
+    d1|d2|d3|d4)
+        INDEX="${CHOICE#d}"
+        INDEX=$((INDEX-1))
+        SELECTED_URL="${DOWNGRADE_URLS[$INDEX]}"
+        SELECTED_VERSION="$(basename "$SELECTED_URL")"
         ;;
 
     0)
@@ -145,29 +171,38 @@ case "$CHOICE" in
         ;;
 
     *)
-        if [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
-            SELECTED="${VERSIONS[$((CHOICE-1))]}"
-        fi
+        echo "[WARN] Invalid choice."
+        exit 0
         ;;
 esac
 
-if [ -z "$SELECTED" ]; then
-    echo "[WARN] No version selected."
-    exit 0
+############################################
+# 5. EXECUTION
+############################################
+
+if [ -n "$SELECTED_URL" ]; then
+
+    echo
+    echo "[INFO] Downloading downgrade package..."
+    wget -qO /tmp/chrome.deb "$SELECTED_URL"
+
+    echo "[INFO] Installing downgrade package..."
+    sudo dpkg -i /tmp/chrome.deb || sudo apt -f install -y
+
+elif [ -n "$SELECTED_VERSION" ]; then
+
+    echo
+    echo "[INFO] Installing upgrade version: $SELECTED_VERSION"
+
+    sudo apt update
+    sudo apt install -y \
+        --allow-downgrades \
+        google-chrome-stable="$SELECTED_VERSION"
 fi
 
-echo
-echo "[INFO] Selected version: $SELECTED"
-
-echo "[INFO] Installing..."
-
-sudo apt install -y \
-    --allow-downgrades \
-    google-chrome-stable="$SELECTED" || {
-        echo "[ERROR] Installation failed"
-        echo "[INFO] Keeping current version: $CURRENT_VERSION"
-        exit 0
-    }
+############################################
+# 6. RESULT
+############################################
 
 echo
 echo "[INFO] Final Chrome version:"
