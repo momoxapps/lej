@@ -72,110 +72,93 @@ service_exists() {
 
 
 ############################################
-# X. GOOGLE CHROME VERSION MANAGER
+# STEP X - GOOGLE CHROME VERSION MANAGER
 ############################################
 
 echo
 echo "[STEP X] Google Chrome version manager..."
 
-CURRENT_VERSION=$(google-chrome --version 2>/dev/null | awk '{print $3}' || echo "unknown")
+CURRENT_VERSION=$(
+google-chrome --version 2>/dev/null \
+| grep -oP '[0-9.]+' \
+| head -n1
+)
+
+if [ -z "${CURRENT_VERSION:-}" ]; then
+    CURRENT_VERSION="Not installed"
+fi
 
 echo "[INFO] Current version: $CURRENT_VERSION"
 
-echo "[INFO] Fetching available stable versions from Google repository..."
+echo "[INFO] Updating package lists..."
+sudo apt update
 
-VERSIONS=$(python3 <<'EOF'
-import urllib.request
-import re
+echo
+echo "[INFO] Fetching installable stable versions..."
 
-url = "https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages"
-
-try:
-    with urllib.request.urlopen(url, timeout=10) as r:
-        data = r.read().decode("utf-8")
-
-    versions = re.findall(r"^Version:\s*(.+)$", data, re.MULTILINE)
-
-    unique_versions = []
-
-    for v in versions:
-        if v not in unique_versions:
-            unique_versions.append(v)
-
-    # print first 10 stable versions
-    for v in unique_versions[:10]:
-        print(v)
-
-except Exception:
-    pass
-EOF
+mapfile -t AVAILABLE_VERSIONS < <(
+apt list -a google-chrome-stable 2>/dev/null \
+| grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+' \
+| sort -Vu
 )
 
-if [ -z "$VERSIONS" ]; then
-    echo "[WARN] Could not fetch Chrome versions."
-    echo "[INFO] Skipping Chrome version management."
+VALID_VERSIONS=()
 
+for version in "${AVAILABLE_VERSIONS[@]}"; do
+
+    if apt-get install -s \
+        google-chrome-stable="$version" \
+        >/dev/null 2>&1; then
+
+        VALID_VERSIONS+=("$version")
+    fi
+
+done
+
+if [ ${#VALID_VERSIONS[@]} -eq 0 ]; then
+    echo "[WARN] No installable versions found."
+    echo "[INFO] Skipping Chrome update."
 else
 
     echo
-    echo "Available stable versions:"
+    echo "Available installable stable versions:"
     echo
 
-    i=1
-
-    declare -a VERSION_ARRAY
-
-    while read -r version; do
-        VERSION_ARRAY[$i]="$version"
-        echo "  [$i] $version"
-        ((i++))
-    done <<< "$VERSIONS"
+    for i in "${!VALID_VERSIONS[@]}"; do
+        printf "  [%d] %s\n" \
+        "$((i+1))" \
+        "${VALID_VERSIONS[$i]}"
+    done
 
     echo
     echo "  [0] Skip"
-
     echo
+
     read -rp "Choose version number: " VERSION_CHOICE
 
-    if [ "$VERSION_CHOICE" = "0" ]; then
+    if [[ "$VERSION_CHOICE" =~ ^[0-9]+$ ]] \
+    && [ "$VERSION_CHOICE" -gt 0 ] \
+    && [ "$VERSION_CHOICE" -le "${#VALID_VERSIONS[@]}" ]; then
 
-        echo "[INFO] Skipping Chrome changes."
-
-    elif [[ -n "${VERSION_ARRAY[$VERSION_CHOICE]:-}" ]]; then
-
-        SELECTED_VERSION="${VERSION_ARRAY[$VERSION_CHOICE]}"
+        SELECTED_VERSION="${VALID_VERSIONS[$((VERSION_CHOICE-1))]}"
 
         echo
         echo "[INFO] Selected version: $SELECTED_VERSION"
 
-        sudo apt-get update -y
+        echo "[INFO] Installing Chrome version..."
 
-        if [ "$SELECTED_VERSION" = "$CURRENT_VERSION" ]; then
-
-            echo "[INFO] Selected version is already installed."
-
-        else
-
-            echo "[INFO] Installing Chrome version: $SELECTED_VERSION"
-
-            sudo apt-get install -y \
-                --allow-downgrades \
-                "google-chrome-stable=$SELECTED_VERSION" || {
-
-                echo "[ERROR] Failed to install selected version."
-            }
-        fi
+        sudo apt install -y \
+        --allow-downgrades \
+        "google-chrome-stable=${SELECTED_VERSION}"
 
     else
-
-        echo "[WARN] Invalid selection. Skipping."
-
+        echo "[INFO] Skipping Chrome version change."
     fi
 fi
 
 echo
 echo "[INFO] Final Chrome version:"
-google-chrome --version 2>/dev/null || echo "[WARN] Chrome not found"
+google-chrome --version || true
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
