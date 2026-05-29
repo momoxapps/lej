@@ -103,7 +103,7 @@ if [ ${#ALL_VERSIONS[@]} -eq 0 ]; then
     exit 0
 fi
 
-# آخر 5 نسخ (stable history)
+
 mapfile -t VERSIONS < <(
 printf "%s\n" "${ALL_VERSIONS[@]}" | tail -n 5
 )
