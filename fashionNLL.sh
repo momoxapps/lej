@@ -72,87 +72,91 @@ service_exists() {
 
 
 ############################################
-# XFCE PANEL FIX (ICON SIZE / PANEL SIZE)
+# XFCE SAFE SESSION HANDLER (FINAL ROOT FIX)
 ############################################
 
 echo
-echo "[STEP X] Fixing XFCE panel size settings..."
-
-TARGET_USER="${SUDO_USER:-user}"
-USER_HOME=$(eval echo "~$TARGET_USER")
-
-XFCE_FILE="/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
-
-if [ ! -f "$XFCE_FILE" ]; then
-    echo "[WARN] XFCE config not found: $XFCE_FILE"
-else
-    echo "[INFO] Checking XFCE panel configuration..."
-
-    backup_file "$XFCE_FILE"
-
-    # ---- ICON SIZE FIX ----
-    if grep -q 'name="icon-size"' "$XFCE_FILE"; then
-        sudo sed -i 's|<property name="icon-size" type="uint" value="[^"]*"/>|<property name="icon-size" type="uint" value="22"/>|g' "$XFCE_FILE"
-    else
-        sudo sed -i '/<property name="plugin-1"/a \        <property name="icon-size" type="uint" value="22"/>' "$XFCE_FILE"
-    fi
-
-    # ---- PANEL SIZE FIX ----
-    if grep -q 'name="size"' "$XFCE_FILE"; then
-        sudo sed -i 's|<property name="size" type="uint" value="[^"]*"/>|<property name="size" type="uint" value="30"/>|g' "$XFCE_FILE"
-    else
-        sudo sed -i '/<property name="panel-1"/a \      <property name="size" type="uint" value="30"/>' "$XFCE_FILE"
-    fi
-
-    echo "[INFO] XFCE panel configuration updated."
-fi
-
-############################################
-# XFCE SAFE SESSION HANDLER (ROOT SAFE)
-############################################
-
-echo
-echo "[STEP X] XFCE session safe restart..."
+echo "[STEP X] XFCE session safe restart (FINAL)..."
 
 TARGET_USER="${SUDO_USER:-user}"
 USER_ID=$(id -u "$TARGET_USER")
 
-
-SESSION_ID=$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '$3==u && $4=="seat0"{print $1; exit}')
-SESSION_ID=${SESSION_ID:-$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '$3==u{print $1; exit}')}
+# 1. get active graphical session
+SESSION_ID=$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '
+$3==u {print $1}
+' | head -n1)
 
 if [ -z "$SESSION_ID" ]; then
-    echo "[ERROR] No active session found for $TARGET_USER"
+    echo "[ERROR] No session found for $TARGET_USER"
     exit 1
 fi
 
-DISPLAY=$(loginctl show-session "$SESSION_ID" -p Display | cut -d= -f2)
-DISPLAY=${DISPLAY:-:0}
+# 2. get DISPLAY
+DISPLAY=$(loginctl show-session "$SESSION_ID" -p Display --value 2>/dev/null)
+
+if [ -z "$DISPLAY" ]; then
+    DISPLAY=":0"
+fi
+
+# 3. DBUS fallback safe
+DBUS_PATH="/run/user/$USER_ID/bus"
+
+if [ ! -S "$DBUS_PATH" ]; then
+    echo "[WARN] DBUS socket not found, trying alternative session..."
+    DBUS_PATH=$(find /run/user/$USER_ID -name bus 2>/dev/null | head -n1)
+fi
 
 echo "[INFO] User: $TARGET_USER"
 echo "[INFO] Session: $SESSION_ID"
 echo "[INFO] DISPLAY: $DISPLAY"
+echo "[INFO] DBUS: $DBUS_PATH"
 
+# 4. safe runner
 run_as_user() {
     sudo -u "$TARGET_USER" \
+        env \
         DISPLAY="$DISPLAY" \
         XAUTHORITY="/home/$TARGET_USER/.Xauthority" \
-        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=$DBUS_PATH" \
         "$@"
 }
 
 ############################################
-# RESTART XFCE PANEL SAFELY
+# FIX XFCE PANEL CONFIG FIRST
 ############################################
 
-echo "[INFO] Restarting XFCE panel..."
+echo "[STEP X] Fixing XFCE panel settings..."
+
+XFCONF_FILE="/home/$TARGET_USER/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+
+if [ -f "$XFCONF_FILE" ]; then
+    sudo sed -i \
+        's|<property name="icon-size" type="uint" value="[0-9]*"|<property name="icon-size" type="uint" value="22"|g' \
+        "$XFCONF_FILE"
+
+    sudo sed -i \
+        's|<property name="size" type="uint" value="[0-9]*"|<property name="size" type="uint" value="30"|g' \
+        "$XFCONF_FILE"
+
+    chown "$TARGET_USER:$TARGET_USER" "$XFCONF_FILE"
+fi
+
+############################################
+# 5. SAFE PANEL RESTART
+############################################
+
+echo "[STEP X] Restarting XFCE panel safely..."
 
 run_as_user pkill xfce4-panel 2>/dev/null || true
-sleep 1
-run_as_user xfce4-panel --restart
+sleep 2
 
-echo "[INFO] XFCE panel restarted successfully."
+run_as_user xfce4-panel --restart || {
+    echo "[WARN] Normal restart failed → fallback method..."
 
+    run_as_user dbus-launch xfce4-panel &
+}
+
+echo "[INFO] XFCE panel restart completed."
 
 ############################################
 # CHROME VERSION MANAGER (HYBRID SAFE FINAL FIXED)
