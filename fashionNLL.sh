@@ -72,11 +72,11 @@ service_exists() {
 
 
 ############################################
-# STEP X - GOOGLE CHROME VERSION MANAGER
+# STEP X - CHROME VERSION MANAGER (ULIXEE)
 ############################################
 
 echo
-echo "[STEP X] Google Chrome version manager..."
+echo "[STEP X] Google Chrome version manager (Ulixee source)..."
 
 CURRENT_VERSION=$(
 google-chrome --version 2>/dev/null \
@@ -84,77 +84,115 @@ google-chrome --version 2>/dev/null \
 | head -n1
 )
 
-if [ -z "${CURRENT_VERSION:-}" ]; then
-    CURRENT_VERSION="Not installed"
-fi
+echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 
-echo "[INFO] Current version: $CURRENT_VERSION"
+TMP_JSON="/tmp/chrome_versions.json"
 
-echo "[INFO] Updating package lists..."
-sudo apt update
+echo "[INFO] Fetching versions list..."
+curl -s \
+https://raw.githubusercontent.com/ulixee/chrome-versions/main/versions.json \
+> "$TMP_JSON" || {
+    echo "[ERROR] Failed to fetch versions.json"
+    echo "[INFO] Skipping Chrome update."
+    return 0
+}
 
-echo
-echo "[INFO] Fetching installable stable versions..."
+echo "[INFO] Extracting latest stable versions..."
 
-mapfile -t AVAILABLE_VERSIONS < <(
-apt list -a google-chrome-stable 2>/dev/null \
-| grep -oP '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-[0-9]+' \
-| sort -Vu
+mapfile -t STABLE_VERSIONS < <(
+python3 - <<PY
+import json
+
+data = json.load(open("$TMP_JSON"))
+
+stable = []
+
+for v in data.get("versions", []):
+    text = str(v).lower()
+
+    if "stable" not in text:
+        continue
+
+    version = v.get("version") or v.get("name") or v.get("channel")
+
+    if version:
+        stable.append(version)
+
+stable = list(dict.fromkeys(stable))
+
+print("\n".join(stable[-5:]))
+PY
 )
 
-VALID_VERSIONS=()
+if [ ${#STABLE_VERSIONS[@]} -eq 0 ]; then
+    echo "[WARN] No stable versions found."
+    echo "[INFO] Skipping."
+    exit 0
+fi
 
-for version in "${AVAILABLE_VERSIONS[@]}"; do
+echo
+echo "Last 5 stable Chrome versions:"
+echo
 
-    if apt-get install -s \
-        google-chrome-stable="$version" \
-        >/dev/null 2>&1; then
-
-        VALID_VERSIONS+=("$version")
-    fi
-
+for i in "${!STABLE_VERSIONS[@]}"; do
+    printf "  [%d] %s\n" "$((i+1))" "${STABLE_VERSIONS[$i]}"
 done
 
-if [ ${#VALID_VERSIONS[@]} -eq 0 ]; then
-    echo "[WARN] No installable versions found."
-    echo "[INFO] Skipping Chrome update."
-else
+echo
+echo "  [u] Upgrade to newest"
+echo "  [d] Downgrade (select older)"
+echo "  [0] Skip"
+echo
 
-    echo
-    echo "Available installable stable versions:"
-    echo
+read -rp "Choose option: " CHOICE
 
-    for i in "${!VALID_VERSIONS[@]}"; do
-        printf "  [%d] %s\n" \
-        "$((i+1))" \
-        "${VALID_VERSIONS[$i]}"
-    done
+INSTALL_VERSION=""
 
-    echo
-    echo "  [0] Skip"
-    echo
+case "$CHOICE" in
 
-    read -rp "Choose version number: " VERSION_CHOICE
+    u|U)
+        INSTALL_VERSION="${STABLE_VERSIONS[-1]}"
+        ;;
 
-    if [[ "$VERSION_CHOICE" =~ ^[0-9]+$ ]] \
-    && [ "$VERSION_CHOICE" -gt 0 ] \
-    && [ "$VERSION_CHOICE" -le "${#VALID_VERSIONS[@]}" ]; then
+    d|D)
+        read -rp "Choose version number (1-${#STABLE_VERSIONS[@]}): " IDX
+        if [[ "$IDX" =~ ^[0-9]+$ ]]; then
+            INSTALL_VERSION="${STABLE_VERSIONS[$((IDX-1))]}"
+        fi
+        ;;
 
-        SELECTED_VERSION="${VALID_VERSIONS[$((VERSION_CHOICE-1))]}"
+    0)
+        echo "[INFO] Skipping Chrome update."
+        exit 0
+        ;;
 
-        echo
-        echo "[INFO] Selected version: $SELECTED_VERSION"
+    *)
+        if [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
+            INSTALL_VERSION="${STABLE_VERSIONS[$((CHOICE-1))]}"
+        fi
+        ;;
+esac
 
-        echo "[INFO] Installing Chrome version..."
-
-        sudo apt install -y \
-        --allow-downgrades \
-        "google-chrome-stable=${SELECTED_VERSION}"
-
-    else
-        echo "[INFO] Skipping Chrome version change."
-    fi
+if [ -z "$INSTALL_VERSION" ]; then
+    echo "[WARN] No version selected."
+    exit 0
 fi
+
+echo
+echo "[INFO] Selected version: $INSTALL_VERSION"
+
+echo "[INFO] Installing via apt..."
+
+sudo apt update
+
+sudo apt install -y \
+    --allow-downgrades \
+    google-chrome-stable="$INSTALL_VERSION" \
+|| {
+    echo "[ERROR] Installation failed"
+    echo "[INFO] This version may not exist in Google repo"
+    exit 1
+}
 
 echo
 echo "[INFO] Final Chrome version:"
