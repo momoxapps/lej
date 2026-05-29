@@ -71,11 +71,11 @@ service_exists() {
 }
 
 ############################################
-# CHROME VERSION MANAGER (HYBRID SAFE)
+# CHROME VERSION MANAGER (HYBRID SAFE FINAL)
 ############################################
 
 echo
-echo "[STEP X] Google Chrome version manager (HYBRID SAFE)..."
+echo "[STEP X] Google Chrome version manager (HYBRID SAFE FINAL)..."
 
 TARGET_USER="${SUDO_USER:-user}"
 USER_HOME=$(eval echo "~$TARGET_USER")
@@ -90,10 +90,10 @@ google-chrome --version 2>/dev/null \
 echo "[INFO] Current version: ${CURRENT_VERSION:-Not installed}"
 
 ############################################
-# 1. UPGRADE VERSION (OFFICIAL APT)
+# 1. FETCH UPGRADE VERSION (OFFICIAL)
 ############################################
 
-echo "[INFO] Fetching available stable version from Google repo..."
+echo "[INFO] Fetching available version from Google repo..."
 
 mapfile -t UPGRADE_VERSIONS < <(
 apt-cache madison google-chrome-stable 2>/dev/null \
@@ -105,7 +105,7 @@ apt-cache madison google-chrome-stable 2>/dev/null \
 LATEST_UPGRADE="${UPGRADE_VERSIONS[-1]:-}"
 
 ############################################
-# 2. VERIFIED DOWNGRADE LIST (STATIC SAFE)
+# 2. VERIFIED DOWNGRADES (STATIC SAFE LIST)
 ############################################
 
 DOWNGRADE_URLS=(
@@ -152,7 +152,7 @@ SELECTED_VERSION=""
 DO_DOWNGRADE=0
 
 ############################################
-# 4. CHOICE HANDLER (SAFE)
+# 4. CHOICE HANDLER
 ############################################
 
 case "$CHOICE" in
@@ -169,7 +169,7 @@ case "$CHOICE" in
         ;;
 
     0)
-        echo "[INFO] Skipping Chrome update (continuing script)..."
+        echo "[INFO] Skip selected → continuing script"
         SELECTED_VERSION=""
         SELECTED_URL=""
         DO_DOWNGRADE=0
@@ -196,8 +196,13 @@ if [ -n "$SELECTED_URL" ]; then
     }
 
     if [ -f /tmp/chrome.deb ]; then
-        echo "[INFO] Installing downgrade package..."
-        sudo apt install -y /tmp/chrome.deb
+        echo "[INFO] Installing downgrade package (dpkg)..."
+
+        sudo dpkg -i /tmp/chrome.deb || true
+        sudo apt-get install -f -y || true
+
+        echo "[INFO] Holding Chrome to prevent auto-upgrade..."
+        sudo apt-mark hold google-chrome-stable
     fi
 
 elif [ -n "$SELECTED_VERSION" ]; then
@@ -210,7 +215,7 @@ elif [ -n "$SELECTED_VERSION" ]; then
 fi
 
 ############################################
-# 6. POST-INSTALL SAFETY (CRITICAL FIX)
+# 6. POST INSTALL SAFETY
 ############################################
 
 echo
@@ -219,17 +224,16 @@ google-chrome --version || true
 
 if [ "$DO_DOWNGRADE" -eq 1 ]; then
 
-    echo "[INFO] Downgrade detected → cleaning profile to prevent crash..."
+    echo "[INFO] Downgrade detected → optional profile cleanup..."
 
     if [ -d "$CHROME_PROFILE/Default" ]; then
-        sudo rm -rf "$CHROME_PROFILE/Default/Local State" 2>/dev/null || true
         sudo rm -rf "$CHROME_PROFILE/Default/Cache" 2>/dev/null || true
         sudo rm -rf "$CHROME_PROFILE/Default/Code Cache" 2>/dev/null || true
         sudo rm -rf "$CHROME_PROFILE/Default/GPUCache" 2>/dev/null || true
     fi
 fi
 
-echo "[INFO] Chrome manager completed safely."
+echo "[INFO] Chrome version manager completed safely."
 
 ############################################
 # 1. REMOVE EXISTING PRINTERS
