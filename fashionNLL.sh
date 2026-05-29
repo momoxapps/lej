@@ -72,7 +72,7 @@ service_exists() {
 
 
 ############################################
-# FIX XFCE PANEL CONFIG FIRST
+# FIX XFCE PANEL CONFIG ONLY (SAFE)
 ############################################
 
 echo "[STEP X] Fixing XFCE panel settings..."
@@ -80,15 +80,23 @@ echo "[STEP X] Fixing XFCE panel settings..."
 XFCONF_FILE="/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
 
 if [ -f "$XFCONF_FILE" ]; then
-    sudo sed -i \
-        's|<property name="icon-size" type="uint" value="[0-9]*"|<property name="icon-size" type="uint" value="22"|g' \
-        "$XFCONF_FILE"
 
-    sudo sed -i \
-        's|<property name="size" type="uint" value="[0-9]*"|<property name="size" type="uint" value="30"|g' \
-        "$XFCONF_FILE"
+    cp -f "$XFCONF_FILE" "${XFCONF_FILE}.bak"
 
-    chown "$TARGET_USER:$TARGET_USER" "$XFCONF_FILE"
+    # icon-size fix
+    sed -i \
+    's|<property name="icon-size" type="uint" value="[0-9]\+"|<property name="icon-size" type="uint" value="22"|g' \
+    "$XFCONF_FILE"
+
+    # size fix
+    sed -i \
+    's|<property name="size" type="uint" value="[0-9]\+"|<property name="size" type="uint" value="30"|g' \
+    "$XFCONF_FILE"
+
+    echo "[INFO] XFCE panel config updated safely."
+
+else
+    echo "[WARN] XFCE config file not found: $XFCONF_FILE"
 fi
 
 ############################################
