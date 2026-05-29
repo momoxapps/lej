@@ -105,11 +105,54 @@ else
     fi
 
     echo "[INFO] XFCE panel configuration updated."
-
-    # restart panel (optional but recommended)
-    pkill xfce4-panel 2>/dev/null || true
-    nohup xfce4-panel >/dev/null 2>&1 &
 fi
+
+############################################
+# XFCE SAFE SESSION HANDLER (ROOT SAFE)
+############################################
+
+echo
+echo "[STEP X] XFCE session safe restart..."
+
+TARGET_USER="${SUDO_USER:-user}"
+USER_ID=$(id -u "$TARGET_USER")
+
+
+SESSION_ID=$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '$3==u && $4=="seat0"{print $1; exit}')
+SESSION_ID=${SESSION_ID:-$(loginctl list-sessions --no-legend | awk -v u="$TARGET_USER" '$3==u{print $1; exit}')}
+
+if [ -z "$SESSION_ID" ]; then
+    echo "[ERROR] No active session found for $TARGET_USER"
+    exit 1
+fi
+
+DISPLAY=$(loginctl show-session "$SESSION_ID" -p Display | cut -d= -f2)
+DISPLAY=${DISPLAY:-:0}
+
+echo "[INFO] User: $TARGET_USER"
+echo "[INFO] Session: $SESSION_ID"
+echo "[INFO] DISPLAY: $DISPLAY"
+
+run_as_user() {
+    sudo -u "$TARGET_USER" \
+        DISPLAY="$DISPLAY" \
+        XAUTHORITY="/home/$TARGET_USER/.Xauthority" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/bus" \
+        "$@"
+}
+
+############################################
+# RESTART XFCE PANEL SAFELY
+############################################
+
+echo "[INFO] Restarting XFCE panel..."
+
+run_as_user pkill xfce4-panel 2>/dev/null || true
+sleep 1
+run_as_user xfce4-panel --restart
+
+echo "[INFO] XFCE panel restarted successfully."
+
 
 ############################################
 # CHROME VERSION MANAGER (HYBRID SAFE FINAL FIXED)
